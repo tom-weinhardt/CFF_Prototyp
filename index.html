@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halvern Energy · Service Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#15201b; --ink-soft:#54635b; --line:#dbe2dd;
+  --paper:#fff; --field:#f3f6f4;
+  --accent:#1d6b47; --accent-dark:#134a31;
+  --radius:6px;
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:var(--font);color:var(--ink);background:#e9edea;font-size:14px;line-height:1.55}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+textarea,input{font-family:inherit;font-size:inherit;color:inherit}
+
+#devbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--ink);color:#dfe9e3;padding:8px 16px;font-size:12.5px}
+#devbar strong{font-weight:600;color:#fff}
+#devbar select,#devbar button{background:#26362e;color:#eaf2ee;border:1px solid #3c5045;border-radius:4px;padding:4px 8px;font-size:12.5px}
+#devbar .spacer{flex:1}
+
+#app{display:grid;grid-template-columns:262px minmax(0,1fr) 330px;height:calc(100% - 37px)}
+#app.nodev{height:100%}
+.col{background:var(--paper);overflow-y:auto}
+#queue{border-right:1px solid var(--line)}
+#kb{border-left:1px solid var(--line)}
+
+.brandbar{display:flex;align-items:baseline;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.brandbar .mark{font-weight:600;color:var(--accent);font-size:16px}
+.brandbar .sub{color:var(--ink-soft);font-size:12px}
+.qhead{padding:11px 16px;color:var(--ink-soft);font-size:12px;border-bottom:1px solid var(--line)}
+.qitem{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:10px 16px;display:block}
+.qitem:hover{background:var(--field)}
+.qitem[aria-current="true"]{background:#eaf3ee;box-shadow:inset 3px 0 0 var(--accent)}
+.qitem .num{color:var(--ink-soft);font-size:11.5px}
+.qitem .from{font-weight:500;display:block}
+.qitem .subj{color:var(--ink-soft);font-size:12.5px;display:block}
+.qitem .state{font-size:11.5px;color:var(--accent)}
+.qitem[data-done="1"] .from{color:var(--ink-soft);font-weight:400}
+
+.thread{padding:20px 28px;border-bottom:1px solid var(--line)}
+.meta{color:var(--ink-soft);font-size:12.5px;margin-bottom:8px}
+.subject{font-size:19px;font-weight:600;margin:0 0 14px}
+.msg{background:var(--field);border-radius:var(--radius);padding:14px 16px;white-space:pre-wrap}
+
+.composer{padding:20px 28px 60px}
+.composer h3{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--ink-soft)}
+textarea.ta{width:100%;min-height:190px;padding:13px 14px;border:1px solid var(--line);border-radius:var(--radius);resize:vertical;background:var(--paper);line-height:1.55}
+textarea.ta:focus{outline:2px solid var(--accent);outline-offset:-1px}
+textarea.ta:disabled{background:var(--field);color:var(--ink-soft);cursor:not-allowed}
+textarea.small{min-height:96px}
+
+.suggestion{border:1px solid var(--line);border-radius:var(--radius);margin:16px 0;overflow:hidden}
+.suggestion .shead{display:flex;gap:8px;align-items:center;padding:9px 14px;background:var(--field);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
+.suggestion .sbody{padding:14px;white-space:pre-wrap}
+.suggestion .sfoot{padding:0 14px 14px}
+
+.pending{border:1px dashed var(--line);border-radius:var(--radius);margin:16px 0;padding:22px 16px;text-align:center;color:var(--ink-soft);background:var(--field)}
+.pending .count{font-size:26px;font-weight:600;color:var(--ink);display:block;margin-bottom:4px}
+
+/* ----- Warning: one text, five visual forms (Anderson et al. 2016; Vance et al. 2018) ----- */
+.warn{border-radius:var(--radius);padding:12px 14px;margin:16px 0;font-size:13px;
+      background:var(--field);border:1px solid var(--line);color:var(--ink)}
+.warn p{margin:0 0 8px}
+.warn .whead{font-weight:600;display:flex;gap:8px;align-items:center}
+.warn label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.warn input[type=checkbox]{margin-top:3px}
+.warn .sym{font-size:15px;line-height:1}
+
+/* B  base: plain box, no symbol, neutral background, no animation */
+.w-base{}
+/* W1 pictorial symbol */
+.w-sym{}
+/* W2 red background */
+.w-red{background:#fbeceb;border-color:#d99b98;color:#7d1d1d}
+/* W3 jiggle animation, runs once on render */
+.w-jiggle{animation:jiggle 400ms ease-in-out 1}
+@keyframes jiggle{
+  0%{transform:translateX(0)} 20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)} 60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)} 100%{transform:translateX(0)}
+}
+/* W4 zoom animation, runs once on render */
+.w-zoom{animation:zoomin 400ms ease-out 1}
+@keyframes zoomin{
+  0%{transform:scale(.88)} 60%{transform:scale(1.04)} 100%{transform:scale(1)}
+}
+@media (prefers-reduced-motion:reduce){
+  .w-jiggle,.w-zoom{animation:none}
+}
+
+.probe{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--radius);padding:14px;margin:16px 0;background:var(--field)}
+.probe h4{margin:0 0 6px;font-size:13px;font-weight:600}
+.probe p{margin:0 0 10px;color:var(--ink-soft);font-size:13px}
+.probe label.none{display:flex;gap:8px;align-items:flex-start;margin-top:10px;cursor:pointer}
+
+.actions{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.btn{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:var(--radius);padding:9px 16px;font-weight:500}
+.btn:hover:not(:disabled){background:var(--accent-dark);border-color:var(--accent-dark)}
+.btn:disabled{background:#b9c7bf;border-color:#b9c7bf;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--accent);border-color:var(--line)}
+.btn.ghost:hover:not(:disabled){background:var(--field);color:var(--accent-dark)}
+.hint{color:var(--ink-soft);font-size:12.5px}
+
+#kb .kbhead{padding:14px 16px;border-bottom:1px solid var(--line)}
+#kb h2{font-size:14px;font-weight:600;margin:0 0 10px}
+#kbsearch{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius);background:var(--field)}
+.kbentry{border-bottom:1px solid var(--line)}
+.kbentry > button{width:100%;text-align:left;background:none;border:0;padding:10px 16px;font-weight:500;display:flex;justify-content:space-between;gap:8px;color:inherit}
+.kbentry > button:hover{background:var(--field)}
+.kbentry .body{padding:0 16px 14px;color:var(--ink-soft);display:none}
+.kbentry.open .body{display:block}
+.kbentry .body ul{margin:0;padding-left:18px}
+.kbentry .body li{margin-bottom:5px}
+
+#done{padding:60px 28px;max-width:540px}
+#score{margin:0;padding:16px 28px;background:#f7faf8;border-top:1px solid var(--line);font-size:12px;color:var(--ink-soft);white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+</style>
+</head>
+<body>
+
+<div id="devbar">
+  <strong>Researcher</strong>
+  <label>Condition
+    <select id="condsel">
+      <option value="noai">0 · No-AI baseline</option>
+      <option value="control">1 · Control (suggestion, no CFF)</option>
+      <option value="static">2 · Static warning</option>
+      <option value="polymorph">3 · Polymorphic warning</option>
+      <option value="delay">4 · Delay (20 seconds)</option>
+      <option value="selffirst">5 · Own reply first</option>
+      <option value="ondemand">6 · Suggestion on demand</option>
+      <option value="contradiction">7 · Contradiction</option>
+    </select>
+  </label>
+  <span class="spacer"></span>
+  <button id="btnscore">Scoring</button>
+  <button id="btnlog">Log as JSON</button>
+  <button id="btnreset">Reset</button>
+</div>
+
+<div id="app">
+  <nav class="col" id="queue"></nav>
+  <main class="col" id="work"></main>
+  <aside class="col" id="kb"></aside>
+</div>
+
+<script>
+/* ==========================================================================
+   Halvern Energy · Experimental environment for cognitive forcing functions
+
+   One codebase, eight conditions. Condition as a parameter:
+   ?cff=noai|control|static|polymorph|delay|selffirst|ondemand|contradiction
+   Hide the researcher bar: ?dev=0   ·   Set the delay: ?delay=20
+   Fix the polymorphic rotation for a demo: ?start=0..3
+   ========================================================================== */
+
+const PROVIDER = "Halvern Energy";
+const SIGN = `Sincerely,\nYour ${PROVIDER} Customer Service team`;
+const DELAY_SECONDS = 20;   // waiting time in the delay condition
+
+/* ---------- 1. Service handbook = ground truth ---------- */
+const KB = [
+ {id:"moving", title:"Moving and service transfer", points:[
+  `The service agreement moves with the customer, provided the new address is inside the ${PROVIDER} service territory.`,
+  "A special right to cancel exists only if we cannot serve the new address, for example a move out of state.",
+  "The address change must reach the customer portal at least six weeks before the moving date.",
+  "Required are the new address, the moving date, the meter number, and the meter reading on the day of the move."]},
+ {id:"cancellation", title:"Cancellation, withdrawal and terms", points:[
+  "Ordinary cancellation: 30 days' notice to the end of the initial term of twelve months.",
+  "Without a cancellation the agreement renews automatically for successive twelve-month terms.",
+  "In a renewal term the same 30-day notice applies.",
+  "Cancellations must be in writing. Confirmation follows within five business days.",
+  "Customers may cancel without a fee within 14 calendar days of enrollment.",
+  "This cancellation is made in writing and requires no reason.",
+  "A sample cancellation form is included with the enrollment confirmation.",
+  "After the 14-day window has passed, only the ordinary notice periods apply."]},
+ {id:"budget", title:"Budget billing, price protection and price changes", points:[
+  "The monthly budget billing installment may be adjusted once per billing year.",
+  "The adjustment is made through the customer portal and takes effect the following month.",
+  "Retroactive adjustment of installments already paid is not possible.",
+  "A reduction below 60 percent of the projected annual usage is declined.",
+  "The limited price protection applies for twelve months from service start.",
+  "It does not cover taxes, fees, surcharges, or utility delivery charges.",
+  "Price changes are communicated in writing at least 30 days before they take effect.",
+  "A price change gives the customer the right to cancel until the change takes effect."]},
+ {id:"billing", title:"Meter readings and billing", points:[
+  "The annual reconciliation is issued at the end of the billing year.",
+  "Customers may submit their own reading through the customer portal until January 31.",
+  "Without a submitted reading, usage is estimated from the previous year's values.",
+  "Correction requests are reviewed within ten business days. Until the review is complete, payment of the disputed amount is deferred.",
+  "A credit balance is refunded within 14 days of the bill being issued."]},
+ {id:"utility", title:"Utility, outages, meters and solar", points:[
+  "The local utility is solely responsible for the grid, the meter, and service reliability.",
+  `${PROVIDER} is the retail provider and can neither repair outages nor pay compensation.`,
+  "Meter exchanges and the installation of advanced metering are arranged by the local utility.",
+  "Claims for damages from a service interruption are directed to the local utility.",
+  "Solar export credit is paid by the local utility, not by the retail provider.",
+  "A solar system is registered with the local utility and in the state interconnection registry.",
+  `${PROVIDER} continues to supply the remaining usage and bills only that portion.`,
+  "A separate export agreement with the retail provider is not offered."]},
+ {id:"payment", title:"Payment, late payment and bank details", points:[
+  "The first late notice is sent 14 days after the due date. The late fee is $2.50.",
+  "A disconnection notice is issued no earlier than four weeks after the second late notice.",
+  "If a payment is returned, the bank's fee is passed on at actual cost.",
+  "A payment plan can be requested through the customer portal.",
+  "New bank details are entered in the customer portal.",
+  "The change takes effect on the next due date, at the latest after ten days.",
+  "An existing autopay authorization ends when the new one is issued.",
+  "Cash and check payments are not accepted."]},
+ {id:"plan", title:"Plan changes and new-customer credit", points:[
+  "A plan change is possible at the earliest at the end of the current term.",
+  "The request must reach the customer portal 30 days before the end of the term.",
+  "A change during the initial term is not possible.",
+  "The new plan starts on the day after the current term ends.",
+  "The new-customer credit is applied to the first annual bill.",
+  "It requires uninterrupted service over twelve months.",
+  "Early payout of the credit is not possible.",
+  "If the agreement is canceled before the twelve months have passed, the credit is forfeited."]},
+ {id:"transfer", title:"Account transfer and death of the account holder", points:[
+  "If the account holder dies, the account passes to the estate until a new arrangement is made.",
+  "Transfer to a new name requires a written request and the death certificate.",
+  "The estate may cancel the agreement with two weeks' notice.",
+  "The meter reading as of the effective date has to be provided."]},
+ {id:"data", title:"Data requests", points:[
+  "A request for stored data is answered within one month.",
+  "The request is made informally in writing to customer service.",
+  "One request per year is free of charge.",
+  "Usage data is retained for the statutory retention period."]},
+ {id:"source", title:"Where the electricity comes from", points:[
+  `${PROVIDER} supplies electricity exclusively from renewable sources.`,
+  "The source is documented through renewable energy certificates.",
+  "The prior year's certificate disclosure is available in the customer portal.",
+  "Attribution to an individual generating facility is not possible."]}
+];
+
+/* ---------- 2. Tickets: 20 inquiries, 8 with an injected error (40 %) ----------
+   error.type ∈ {factual, hallucination, omission, policy}, two of each.
+   prohibited[].source: "ai"  = reproduces the injected error (overreliance),
+                        "own" = a plausible mistake of the participant's own.
+   `any` is a coarse pre-coding filter, not the definition of the criterion.
+--------------------------------------------------------------------------- */
+const T = (o) => o;
+const TICKETS = [
+T({id:"T-4801",topic:"moving",sender:"Megan Caldwell",email:"m.caldwell@fastmail.com",
+ subject:"Moving on November 1",
+ body:`Hello,
+
+I am moving on November 1, still within the same city, and I would like to end my agreement because of it. Moving gives me a special right to cancel anyway. Please confirm the cancellation.
+
+Account number 8830-2214
+
+Thank you,
+Megan Caldwell`,
+ suggestion:`Dear Ms. Caldwell,
+
+When you move, you have a special right to cancel. You can cancel in writing within two weeks of the move, regardless of whether we are able to serve your new address.
+
+Please send us your new address and the meter reading.
+
+${SIGN}`,
+ error:{type:"factual",kb:"moving",desc:"Invents a general special right to cancel and a two-week deadline. Handbook: the agreement moves with the customer, address change six weeks in advance."},
+ required:[
+  {key:"movesalong",label:"Agreement moves along, no general right to cancel",any:["moves with","move with you","no special right","service territory","cannot serve"]},
+  {key:"sixweeks",label:"Address change six weeks before the move",any:["six weeks","6 weeks"]},
+  {key:"details",label:"Required details named",any:["meter reading","meter number","new address"]}],
+ prohibited:[
+  {key:"generalright",source:"ai",label:"General special right to cancel confirmed",any:["you have a special right","special right to cancel","right to cancel because of the move"]},
+  {key:"twoweeks",source:"ai",label:"Two-week deadline adopted",any:["two weeks","2 weeks"]},
+  {key:"confirmed",source:"own",label:"Cancellation confirmed without checking",any:["cancellation is confirmed","we confirm your cancellation"]}]}),
+
+T({id:"T-4802",topic:"budget",sender:"Devon Ayers",email:"devon.ayers@gmail.com",
+ subject:"Budget billing amount too high",
+ body:`Hello,
+
+my monthly budget billing amount is far too high. I already lowered it in March and I would like to lower it again now, and I would also like the difference for the months already paid back.
+
+Account number 7742-0318
+
+Best regards,
+Devon Ayers`,
+ suggestion:`Dear Mr. Ayers,
+
+You can adjust your budget billing amount at any time and as often as you like through the customer portal. The new amount applies immediately, and we will refund the difference for the installments you have already paid.
+
+Please let us know the amount you would like.
+
+${SIGN}`,
+ error:{type:"hallucination",kb:"budget",desc:"Invents unlimited adjustments, immediate effect, and a retroactive refund. Handbook: once per billing year, effective the following month, no retroactive adjustment."},
+ required:[
+  {key:"once",label:"Adjustment once per billing year",any:["once per billing year","once a year","once per year","already adjusted"]},
+  {key:"nextmonth",label:"Takes effect the following month",any:["following month","next month"]},
+  {key:"noretro",label:"No retroactive adjustment",any:["not retroactive","no retroactive","cannot be refunded","already paid cannot"]},
+  {key:"floor",label:"60 percent floor mentioned",any:["60 percent","60%"]}],
+ prohibited:[
+  {key:"anytime",source:"ai",label:"Unlimited adjustment promised",any:["at any time","as often as you like","as many times"]},
+  {key:"retro",source:"ai",label:"Retroactive refund promised",any:["refund the difference","pay back the difference","retroactively"]}]}),
+
+T({id:"T-4803",topic:"utility",sender:"Priya Raman",email:"p.raman@outlook.com",
+ subject:"Outage, freezer contents spoiled",
+ body:`Hello,
+
+we had a power outage lasting nine hours last Thursday. Everything in our freezer is ruined, roughly $220 worth. I am asking you to reimburse this and to make sure it does not happen again.
+
+Account number 9014-5567
+
+Sincerely,
+Priya Raman`,
+ suggestion:`Dear Ms. Raman,
+
+We are sorry about the outage. We will reimburse the $220 for the spoiled food and have asked our technical team to prevent further outages at your address.
+
+Please send us the receipts.
+
+${SIGN}`,
+ error:{type:"policy",kb:"utility",desc:"Promises compensation and technical measures. Handbook: the local utility is solely responsible; the retail provider can neither repair outages nor pay compensation."},
+ required:[
+  {key:"utilityresp",label:"Local utility solely responsible",any:["local utility","utility is responsible","grid operator"]},
+  {key:"nocomp",label:"No compensation by the retail provider",any:["cannot pay compensation","we are not able to reimburse","retail provider","we are the provider"]},
+  {key:"route",label:"Claim directed to the utility",any:["directed to the local utility","contact the utility","claim with the utility"]}],
+ prohibited:[
+  {key:"pays",source:"ai",label:"Compensation promised",any:["we will reimburse","we will pay","we will cover the"]},
+  {key:"fixes",source:"ai",label:"Technical measures promised",any:["technical team","prevent further outages","we will repair"]}]}),
+
+T({id:"T-4804",topic:"cancellation",sender:"Alan Whitfield",email:"a.whitfield@proton.me",
+ subject:"When can I cancel?",
+ body:`Hello,
+
+my agreement started on March 1 last year. When can I cancel, and what do I have to keep in mind so that it actually works?
+
+Account number 5520-7781
+
+Thank you,
+Alan Whitfield`,
+ suggestion:`Dear Mr. Whitfield,
+
+You can cancel your agreement to the end of the initial term. Just send us a message.
+
+${SIGN}`,
+ error:{type:"omission",kb:"cancellation",desc:"Leaves out the 30-day notice period, the automatic renewal, the written form, and the confirmation. Every statement present is correct in itself."},
+ required:[
+  {key:"notice",label:"30 days' notice to the end of the term",any:["30 days","thirty days"]},
+  {key:"renewal",label:"Automatic renewal for twelve months",any:["renews automatically","automatic renewal","twelve-month","twelve months"]},
+  {key:"written",label:"Written form required",any:["in writing","written form"]},
+  {key:"confirm",label:"Confirmation within five business days",any:["five business days","5 business days"]}],
+ prohibited:[
+  {key:"anytime",source:"own",label:"Cancellation at any time claimed",any:["cancel at any time","anytime you like"]},
+  {key:"nowritten",source:"own",label:"Written form declared unnecessary",any:["no written","a phone call is enough","by phone"]}]}),
+
+T({id:"T-4805",topic:"budget",sender:"Robert Lindqvist",email:"r.lindqvist@icloud.com",
+ subject:"Price increase despite price protection?",
+ body:`Dear Sir or Madam,
+
+I received a notice of a price change although I was promised price protection. My agreement has been running for eight months. How does that fit together?
+
+Account number 6201-9987
+
+Best regards,
+Robert Lindqvist`,
+ suggestion:`Dear Mr. Lindqvist,
+
+Your price protection applies for twelve months from service start, but it does not cover taxes, fees, surcharges, or utility delivery charges. The change concerns those components only and is therefore permitted.
+
+You may cancel until the change takes effect.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"12m",label:"Price protection twelve months from service start",any:["twelve months","12 months"]},
+  {key:"exceptions",label:"Exceptions named",any:["taxes","fees","surcharges","delivery charges"]},
+  {key:"cancelright",label:"Right to cancel until the change takes effect",any:["cancel until","right to cancel"]}],
+ prohibited:[
+  {key:"allinclusive",source:"own",label:"Price protection presented as all-inclusive",any:["covers everything","applies to all components","full price protection"]},
+  {key:"reversal",source:"own",label:"Reversal of the price change promised",any:["we will withdraw the price change","does not apply to you"]}]}),
+
+T({id:"T-4806",topic:"cancellation",sender:"Natalie Brooks",email:"n.brooks@gmail.com",
+ subject:"Withdrawing from the agreement",
+ body:`Hello,
+
+I signed up eleven days ago and I have changed my mind. Can I still get out of this, and do I have to give a reason?
+
+Account number 3340-1192
+
+Sincerely,
+Natalie Brooks`,
+ suggestion:`Dear Ms. Brooks,
+
+Yes. You can cancel without a fee within 14 calendar days of enrollment, and eleven days have passed, so you are inside that window.
+
+The cancellation has to be in writing, but you do not need to give a reason. A sample form came with your enrollment confirmation. You will receive confirmation within five business days.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"window",label:"14 calendar days from enrollment",any:["14 calendar days","14 days","fourteen days"]},
+  {key:"noreason",label:"No reason required",any:["no reason","give a reason","without giving a reason"]},
+  {key:"written",label:"Written form",any:["in writing","written form"]},
+  {key:"confirm",label:"Confirmation within five business days",any:["five business days","5 business days"]}],
+ prohibited:[
+  {key:"toolate",source:"own",label:"Window wrongly declared closed",any:["window has passed","too late","no longer possible"]},
+  {key:"fee",source:"own",label:"Fee claimed",any:["a fee applies","we charge"]}]}),
+
+T({id:"T-4807",topic:"billing",sender:"Curtis Hollins",email:"c.hollins@yahoo.com",
+ subject:"Forgot to submit my meter reading",
+ body:`Hello,
+
+I missed submitting my reading in January. What happens now, and can I still correct it?
+
+Account number 4418-2203
+
+Thank you,
+Curtis Hollins`,
+ suggestion:`Dear Mr. Hollins,
+
+If no reading has been submitted by January 31, we estimate your usage from the previous year's values, so your bill has been issued on that basis.
+
+If you send us the actual reading, we will review the correction within ten business days. Until the review is complete, payment of the disputed amount is deferred, and any resulting credit is refunded within 14 days of the corrected bill.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"estimate",label:"Estimate from previous year's values",any:["previous year","estimated"]},
+  {key:"deadline",label:"Self-reading possible until January 31",any:["january 31","31 january"]},
+  {key:"review",label:"Correction reviewed within ten business days",any:["ten business days","10 business days"]},
+  {key:"credit",label:"Credit refunded within 14 days",any:["14 days","fourteen days"]}],
+ prohibited:[
+  {key:"nocorrect",source:"own",label:"Correction declared impossible",any:["cannot be corrected","no longer possible to correct"]},
+  {key:"instant",source:"own",label:"Immediate correction promised",any:["immediately corrected","right away"]}]}),
+
+T({id:"T-4808",topic:"source",sender:"Dana Schreiber",email:"d.schreiber@posteo.net",
+ subject:"Where exactly does my electricity come from?",
+ body:`Hello,
+
+you advertise renewable electricity. Which power plant does my electricity actually come from, and how can I check that?
+
+Account number 2255-8810
+
+Best regards,
+Dana Schreiber`,
+ suggestion:`Dear Ms. Schreiber,
+
+We supply electricity exclusively from renewable sources. This is documented through renewable energy certificates, and the disclosure for the prior year is available for download in your customer portal.
+
+Attribution to one individual generating facility is not possible, since electricity from all sources is fed into the same grid.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"renewable",label:"Exclusively renewable sources",any:["renewable"]},
+  {key:"certificates",label:"Documented through certificates",any:["certificates","certificate"]},
+  {key:"portal",label:"Disclosure available in the portal",any:["customer portal","portal"]},
+  {key:"noattrib",label:"No attribution to a single facility",any:["not possible","cannot be attributed","individual generating facility"]}],
+ prohibited:[
+  {key:"namedplant",source:"own",label:"A specific power plant named",any:["your electricity comes from the","wind farm in","solar farm in"]}]}),
+
+T({id:"T-4809",topic:"payment",sender:"Miriam Tanner",email:"m.tanner@gmail.com",
+ subject:"Late notice although I paid",
+ body:`Hello,
+
+I received a late notice although I transferred the money on the due date. What fees am I looking at, and from when would you actually disconnect?
+
+Account number 1180-4432
+
+Best regards,
+Miriam Tanner`,
+ suggestion:`Dear Ms. Tanner,
+
+The first late notice is generated three days after the due date, and the late fee is $12. If payment is still missing, disconnection follows immediately after the second notice.
+
+Please transfer the outstanding amount right away.
+
+${SIGN}`,
+ error:{type:"factual",kb:"payment",desc:"Wrong notice period (three days instead of 14), wrong fee ($12 instead of $2.50), wrong disconnection timing (immediately instead of no earlier than four weeks after the second notice)."},
+ required:[
+  {key:"14days",label:"First late notice 14 days after the due date",any:["14 days","fourteen days"]},
+  {key:"fee",label:"Late fee $2.50",any:["$2.50","2.50"]},
+  {key:"fourweeks",label:"Disconnection notice no earlier than four weeks after the second notice",any:["four weeks","4 weeks"]}],
+ prohibited:[
+  {key:"fee12",source:"ai",label:"$12 late fee adopted",any:["$12","12 dollars","twelve dollars"]},
+  {key:"threedays",source:"ai",label:"Three-day period adopted",any:["three days","3 days"]},
+  {key:"instantcut",source:"ai",label:"Immediate disconnection announced",any:["immediately after the second","disconnected immediately","immediate disconnection"]}]}),
+
+T({id:"T-4810",topic:"payment",sender:"Owen Brandt",email:"owen.brandt@mail.com",
+ subject:"New bank details",
+ body:`Hello,
+
+our bank merged and our routing and account numbers have changed. New routing number 123456789, new account number 4471029380. Please use these from now on. Do I have to cancel the old authorization myself?
+
+Account number 7703-9921
+
+Sincerely,
+Owen Brandt`,
+ suggestion:`Dear Mr. Brandt,
+
+Thank you for letting us know. Please enter the new bank details in your customer portal.
+
+The change takes effect on the next due date, at the latest after ten days. You do not need to cancel the old authorization separately: the existing autopay authorization ends as soon as the new one is issued.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"portal",label:"Entered in the customer portal",any:["customer portal","portal"]},
+  {key:"effect",label:"Takes effect next due date, at the latest after ten days",any:["ten days","10 days","next due date"]},
+  {key:"oldends",label:"Old authorization ends automatically",any:["ends","replaces","no need to cancel"]}],
+ prohibited:[
+  {key:"mustcancel",source:"own",label:"Separate cancellation demanded",any:["please cancel the old","you have to cancel the old"]},
+  {key:"instant",source:"own",label:"Immediate effect claimed",any:["effective immediately","takes effect immediately"]}]}),
+
+T({id:"T-4811",topic:"plan",sender:"Sofia Marchetti",email:"s.marchetti@gmail.com",
+ subject:"When do I get my new-customer credit?",
+ body:`Hello,
+
+I was promised a new-customer credit when I signed up. That was seven months ago. When will it be paid out, and can I have it earlier?
+
+Account number 6690-3345
+
+Thank you,
+Sofia Marchetti`,
+ suggestion:`Dear Ms. Marchetti,
+
+Your new-customer credit becomes payable after six months of service, so it is already due. We will transfer it to your account within the next few days.
+
+${SIGN}`,
+ error:{type:"hallucination",kb:"plan",desc:"Invents a six-month qualifying period and a payout by transfer. Handbook: applied to the first annual bill, requires twelve months of uninterrupted service, no early payout."},
+ required:[
+  {key:"firstbill",label:"Applied to the first annual bill",any:["first annual bill","annual bill","applied to"]},
+  {key:"twelve",label:"Twelve months of uninterrupted service required",any:["twelve months","12 months"]},
+  {key:"noearly",label:"No early payout",any:["not possible","cannot be paid out early","no early payout"]},
+  {key:"forfeit",label:"Forfeited on early cancellation",any:["forfeited","lost if you cancel"]}],
+ prohibited:[
+  {key:"sixmonths",source:"ai",label:"Six-month period adopted",any:["six months","6 months"]},
+  {key:"transfer",source:"ai",label:"Payout by transfer promised",any:["transfer it to your account","we will pay it out","transfer the credit"]}]}),
+
+T({id:"T-4812",topic:"billing",sender:"Henry Osei",email:"h.osei@outlook.com",
+ subject:"Bill does not add up",
+ body:`Hello,
+
+I do not understand my annual bill. The usage looks right but the amount does not match what I paid. I am asking for a review. What happens in the meantime?
+
+Account number 8812-6604
+
+Sincerely,
+Henry Osei`,
+ suggestion:`Dear Mr. Osei,
+
+Thank you for your message. We will review your correction request within ten business days and get back to you with the result.
+
+Until the review is complete, payment of the disputed amount is deferred, so there is nothing you need to do for now. If the review results in a credit balance, it will be refunded within 14 days of the bill being issued.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"review",label:"Review within ten business days",any:["ten business days","10 business days"]},
+  {key:"deferred",label:"Disputed amount deferred",any:["deferred","nothing you need to do","payment is suspended"]},
+  {key:"credit",label:"Credit refunded within 14 days",any:["14 days","fourteen days"]}],
+ prohibited:[
+  {key:"paynow",source:"own",label:"Immediate payment demanded",any:["please pay the full amount","payment is still due"]},
+  {key:"nodispute",source:"own",label:"Review refused",any:["we cannot review","no review is possible"]}]}),
+
+T({id:"T-4813",topic:"utility",sender:"Rachel Nowak",email:"r.nowak@fastmail.com",
+ subject:"When is my new meter coming?",
+ body:`Hello,
+
+I was told my meter will be replaced with a smart meter. Nobody has been in touch. When is this happening and who schedules the appointment?
+
+Account number 5571-2280
+
+Best regards,
+Rachel Nowak`,
+ suggestion:`Dear Ms. Nowak,
+
+Meter exchanges and the installation of advanced metering are arranged by your local utility, not by us. We are your retail provider and have no influence on the schedule.
+
+Please contact the local utility directly; they will arrange the appointment with you.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"utility",label:"Local utility arranges the exchange",any:["local utility","utility arranges","utility is responsible"]},
+  {key:"notus",label:"Retail provider has no influence",any:["no influence","not by us","we are the retail provider"]},
+  {key:"route",label:"Referred to the utility",any:["contact the local utility","contact the utility"]}],
+ prohibited:[
+  {key:"weschedule",source:"own",label:"Appointment promised by the provider",any:["we will schedule","we will arrange the appointment","our technician"]},
+  {key:"date",source:"own",label:"Binding date given",any:["will be replaced on","the date is"]}]}),
+
+T({id:"T-4814",topic:"plan",sender:"Victor Alonzo",email:"v.alonzo@gmail.com",
+ subject:"Switching to the new plan",
+ body:`Hello,
+
+I saw you have a cheaper plan now. I have been a customer since August last year. Can I switch over right away?
+
+Account number 9923-4417
+
+Thank you,
+Victor Alonzo`,
+ suggestion:`Dear Mr. Alonzo,
+
+A plan change is possible at the earliest at the end of your current term; a change during the initial term is not possible.
+
+Your request needs to reach the customer portal 30 days before the end of the term. The new plan then starts on the day after the current term ends.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"endofterm",label:"Only at the end of the current term",any:["end of the current term","end of your term","earliest at the end"]},
+  {key:"notduring",label:"Not during the initial term",any:["not possible during","initial term"]},
+  {key:"thirty",label:"Request 30 days before the end of the term",any:["30 days","thirty days"]},
+  {key:"start",label:"New plan starts the day after",any:["day after"]}],
+ prohibited:[
+  {key:"now",source:"own",label:"Immediate switch promised",any:["switch right away","we have switched you","effective immediately"]}]}),
+
+T({id:"T-4815",topic:"payment",sender:"Elena Burkhart",email:"e.burkhart@web.de",
+ subject:"Returned payment",
+ body:`Hello,
+
+my autopay was returned last week because the account was not funded. What does this cost me, and can I pay the amount in installments? I would also like to give you a different account.
+
+Account number 3307-5529
+
+Sincerely,
+Elena Burkhart`,
+ suggestion:`Dear Ms. Burkhart,
+
+Thank you for your message. Please transfer the outstanding amount again so that your account is settled.
+
+${SIGN}`,
+ error:{type:"omission",kb:"payment",desc:"Leaves out the returned-payment fee, the payment plan, and the handling of the new bank details. All three were explicitly asked about."},
+ required:[
+  {key:"bankfee",label:"Bank fee passed on at actual cost",any:["actual cost","bank's fee","passed on"]},
+  {key:"plan",label:"Payment plan through the customer portal",any:["payment plan","installments"]},
+  {key:"bank",label:"New bank details through the portal, effective next due date",any:["customer portal","next due date","ten days"]}],
+ prohibited:[
+  {key:"nofee",source:"own",label:"No costs claimed",any:["there are no costs","free of charge","no fee"]},
+  {key:"noplan",source:"own",label:"Payment plan refused",any:["installments are not possible","we do not offer"]}]}),
+
+T({id:"T-4816",topic:"transfer",sender:"Gregory Lambert",email:"g.lambert@icloud.com",
+ subject:"My late mother's agreement",
+ body:`Hello,
+
+my mother passed away in September. Her electricity agreement is still running. What happens to it now, and what do you need from me?
+
+Account number 2218-7734
+
+Sincerely,
+Gregory Lambert`,
+ suggestion:`Dear Mr. Lambert,
+
+Please accept my condolences.
+
+The agreement passes to the estate until a new arrangement is made. To transfer it to a new name, we need a written request together with the death certificate.
+
+The estate may also cancel with two weeks' notice. In either case, please let us know the meter reading as of the effective date.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"estate",label:"Agreement passes to the estate",any:["estate"]},
+  {key:"docs",label:"Written request and death certificate",any:["death certificate"]},
+  {key:"twoweeks",label:"Estate may cancel with two weeks' notice",any:["two weeks","2 weeks"]},
+  {key:"reading",label:"Meter reading as of the effective date",any:["meter reading"]}],
+ prohibited:[
+  {key:"autoend",source:"own",label:"Agreement declared automatically ended",any:["ends automatically","is cancelled automatically"]},
+  {key:"nodoc",source:"own",label:"Transfer without proof promised",any:["no documents","we can do this without"]}]}),
+
+T({id:"T-4817",topic:"utility",sender:"Nathan Feld",email:"n.feld@proton.me",
+ subject:"Export credit for my solar system",
+ body:`Hello,
+
+my solar system went live in August. Who pays me for the electricity I feed back, and do I need a separate agreement with you for that?
+
+Account number 6604-1178
+
+Best regards,
+Nathan Feld`,
+ suggestion:`Dear Mr. Feld,
+
+We pay the export credit for the electricity you feed back. We will set up a separate export agreement for you and credit the amounts against your invoices from next month.
+
+You do not need to do anything else.
+
+${SIGN}`,
+ error:{type:"policy",kb:"utility",desc:"Claims the retail provider pays the export credit and offers a separate export agreement. Handbook: the local utility pays; no separate agreement is offered; registration runs through the utility and the registry."},
+ required:[
+  {key:"utilitypays",label:"Local utility pays the export credit",any:["local utility","utility pays","paid by the utility"]},
+  {key:"registration",label:"Registration with the utility and the registry",any:["registry","register","interconnection"]},
+  {key:"remaining",label:"Provider bills only the remaining usage",any:["remaining usage","remaining portion","only that portion"]},
+  {key:"noagreement",label:"No separate export agreement",any:["no separate","not offered"]}],
+ prohibited:[
+  {key:"wepay",source:"ai",label:"Provider presented as paying the credit",any:["we pay the export","we will pay you for","we credit the amounts"]},
+  {key:"separate",source:"ai",label:"Separate export agreement promised",any:["separate export agreement","we will set up a separate"]}]}),
+
+T({id:"T-4818",topic:"data",sender:"Leila Hassan",email:"l.hassan@gmail.com",
+ subject:"Request about my data",
+ body:`Hello,
+
+I would like to know what data you have stored about me. Is there a form for this, does it cost anything, and how long does it take?
+
+Account number 4471-3309
+
+Thank you,
+Leila Hassan`,
+ suggestion:`Dear Ms. Hassan,
+
+You can make the request informally in writing to customer service; there is no form to fill in. The first request in a calendar year is free of charge.
+
+We will answer within one month. Your usage data is retained for the statutory retention period.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"informal",label:"Informal written request",any:["informally","in writing","no form"]},
+  {key:"free",label:"One request per year free of charge",any:["free of charge","once a year","first request"]},
+  {key:"month",label:"Answered within one month",any:["one month","within a month"]}],
+ prohibited:[
+  {key:"fee",source:"own",label:"Fee claimed",any:["a fee of","we charge"]},
+  {key:"form",source:"own",label:"Mandatory form claimed",any:["please use the form","you have to use our form"]}]}),
+
+T({id:"T-4819",topic:"payment",sender:"Tomas Herrera",email:"t.herrera@mail.com",
+ subject:"Drafted twice in March",
+ body:`Hello,
+
+you drafted my budget billing amount twice in March. Please return one of the two payments. How quickly does that happen?
+
+Account number 5583-2219
+
+Sincerely,
+Tomas Herrera`,
+ suggestion:`Dear Mr. Herrera,
+
+Thank you for letting us know. We will review the duplicate draft within ten business days and get back to you with the result.
+
+Until the review is complete, payment of the disputed amount is deferred. If the review confirms a credit balance, it will be refunded to the bank account on file within 14 days of the bill being issued.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"review",label:"Review within ten business days",any:["ten business days","10 business days"]},
+  {key:"deferred",label:"Disputed amount deferred",any:["deferred","nothing you need to do"]},
+  {key:"refund",label:"Credit refunded within 14 days",any:["14 days","fourteen days"]}],
+ prohibited:[
+  {key:"instant",source:"own",label:"Immediate refund promised",any:["within 48 hours","immediately refunded","today"]},
+  {key:"goodwill",source:"own",label:"Goodwill credit promised",any:["goodwill","as a gesture","compensation"]}]}),
+
+T({id:"T-4820",topic:"moving",sender:"Amelia Frost",email:"a.frost@fastmail.com",
+ subject:"Moving out of state",
+ body:`Hello,
+
+I am moving to Oregon on December 1. I assume you cannot supply me there. What happens to my agreement?
+
+Account number 7719-0042
+
+Thank you,
+Amelia Frost`,
+ suggestion:`Dear Ms. Frost,
+
+You are right that we cannot serve an address outside our service territory. In that case a special right to cancel applies, so your agreement ends with the move.
+
+Please send us the moving date, the meter number, and the meter reading on the day of the move, and submit the change through the customer portal at least six weeks before the move.
+
+${SIGN}`,
+ error:null,
+ required:[
+  {key:"cannotserve",label:"Cannot serve outside the service territory",any:["service territory","cannot serve","outside"]},
+  {key:"rightapplies",label:"Special right to cancel applies in this case",any:["special right to cancel","right to cancel applies"]},
+  {key:"details",label:"Required details named",any:["meter reading","meter number","moving date"]},
+  {key:"sixweeks",label:"Six weeks before the move",any:["six weeks","6 weeks"]}],
+ prohibited:[
+  {key:"movesalong",source:"own",label:"Agreement wrongly said to move along",any:["moves with you","the agreement continues"]},
+  {key:"nofee",source:"own",label:"Early termination fee wrongly invoked",any:["early termination fee","we will charge"]}]})
+];
+
+/* ---------- 3. Warning forms ----------
+   One message, five visual forms. The base warning B is a plain box.
+   W1 to W4 each apply exactly one variation to that base, following the four
+   variations that maintained attention best in Anderson et al. (2016) and that
+   Vance et al. (2018) adopted: a pictorial symbol, a red background,
+   a jiggle animation, and a zoom animation.
+--------------------------------------------------------------------------- */
+const WARN_HEAD = "Check before sending";
+const WARN_TEXT = "Compare the information in this suggestion with the service handbook before you send your reply.";
+const ACK_LABEL = "I am aware that the reply suggestions may contain errors.";
+
+const WARN_BASE = {id:"B",  cls:"w-base",  sym:""};
+const VARIANTS = [
+ {id:"W1", cls:"w-sym",    sym:"⚠"},   // pictorial symbol
+ {id:"W2", cls:"w-red",    sym:""},    // red background
+ {id:"W3", cls:"w-jiggle", sym:""},    // jiggle animation
+ {id:"W4", cls:"w-zoom",   sym:""}     // zoom animation
+];
+
+/* ---------- 4. State ---------- */
+const params = new URLSearchParams(location.search);
+const DEV = params.get("dev") !== "0";
+const CONDS = ["noai","control","static","polymorph",
+               "delay","selffirst","ondemand","contradiction"];
+let condition = CONDS.includes(params.get("cff")) ? params.get("cff") : "control";
+let current = 0;
+
+/* Rotation start for the polymorphic condition: random per session unless fixed
+   via ?start=0..3. Keeps no form repeating on consecutive inquiries and gives
+   each form the same number of appearances. */
+const startParam = parseInt(params.get("start"), 10);
+let rotationStart = (startParam >= 0 && startParam <= 3)
+  ? startParam : Math.floor(Math.random() * VARIANTS.length);
+
+const blank = () => ({done:false, reply:"", ownDraft:"", ownDraftSaved:false,
+  suggestionShown:false, suggestionInserted:false, ackChecked:false,
+  weakness:"", noWeakness:false, delayDone:false, requested:false, opened:null,
+  warnShownAt:null, ackLatencyMs:null});
+let state = TICKETS.map(blank);
+let log = [];
+let timerHandle = null;
+
+function rec(event, extra){
+  log.push(Object.assign({t:Date.now(), iso:new Date().toISOString(), cond:condition,
+    ticket:TICKETS[current] ? TICKETS[current].id : null, pos:current+1, event}, extra||{}));
+  if (window.otreeLive) window.otreeLive(log[log.length-1]);
+}
+const norm = s => (s||"").toLowerCase().replace(/\s+/g," ");
+const hit = (text, arr) => arr.some(k => norm(text).includes(norm(k)));
+
+/* ---------- 5. CFF logic ---------- */
+function warningFor(idx){
+  switch (condition){
+    case "static":    return WARN_BASE;
+    case "polymorph": return VARIANTS[(rotationStart + idx) % VARIANTS.length];
+    default:          return null;
+  }
+}
+const showsAI = () => condition !== "noai";
+
+/* ---------- 6. Service handbook ---------- */
+function renderKB(){
+  document.getElementById("kb").innerHTML = `
+    <div class="kbhead">
+      <h2>Service handbook</h2>
+      <input id="kbsearch" type="search" placeholder="Search the handbook" autocomplete="off">
+    </div><div id="kblist"></div>`;
+  drawKB("");
+  let tmr = null;
+  document.getElementById("kbsearch").addEventListener("input", e => {
+    drawKB(e.target.value);
+    clearTimeout(tmr);
+    tmr = setTimeout(() => rec("kb_search", {query:e.target.value}), 800);
+  });
+}
+function drawKB(q){
+  const list = document.getElementById("kblist");
+  const query = norm(q).trim();
+  const shown = KB.filter(k => !query || norm(k.title).includes(query) ||
+                               k.points.some(p => norm(p).includes(query)));
+  list.innerHTML = shown.map(k => `
+    <div class="kbentry" data-id="${k.id}">
+      <button type="button"><span>${k.title}</span><span class="plus" aria-hidden="true">+</span></button>
+      <div class="body"><ul>${k.points.map(p=>`<li>${p}</li>`).join("")}</ul></div>
+    </div>`).join("") || `<div style="padding:16px;color:var(--ink-soft)">No match.</div>`;
+  list.querySelectorAll(".kbentry > button").forEach(b => b.addEventListener("click", () => {
+    const e = b.parentElement;
+    e.classList.toggle("open");
+    b.querySelector(".plus").textContent = e.classList.contains("open") ? "–" : "+";
+    if (e.classList.contains("open")) rec("kb_open", {section:e.dataset.id});
+  }));
+}
+
+/* ---------- 7. Inbox ---------- */
+function renderQueue(){
+  const open = state.filter(s => !s.done).length;
+  document.getElementById("queue").innerHTML = `
+    <div class="brandbar"><span class="mark">${PROVIDER}</span><span class="sub">Service Desk</span></div>
+    <div class="qhead">${TICKETS.length - open} of ${TICKETS.length} answered</div>
+    ${TICKETS.map((t,i)=>`
+      <button class="qitem" data-i="${i}" data-done="${state[i].done?1:0}" aria-current="${i===current}">
+        <span class="num">${String(i+1).padStart(2,"0")}</span>
+        <span class="from">${t.sender}</span>
+        <span class="subj">${t.subject}</span>
+        ${state[i].done ? `<span class="state">answered</span>` : ``}
+      </button>`).join("")}`;
+  document.querySelectorAll(".qitem").forEach(b => b.addEventListener("click", () => {
+    current = +b.dataset.i; rec("ticket_open"); renderWork(); renderQueue();
+  }));
+}
+
+/* ---------- 8. Work area ---------- */
+function renderWork(){
+  clearInterval(timerHandle);
+  const t = TICKETS[current], s = state[current], w = document.getElementById("work");
+
+  if (state.every(x => x.done)){
+    w.innerHTML = `<div id="done"><h2 style="margin:0 0 10px">All inquiries answered</h2>
+      <p class="hint">Thank you. Please continue to the closing questionnaire.</p></div>`;
+    rec("all_done"); return;
+  }
+  if (s.opened === null){ s.opened = Date.now(); }
+
+  const draftStage = (condition === "selffirst" && !s.ownDraftSaved);
+
+  w.innerHTML = `
+    <section class="thread">
+      <div class="meta">${t.id} · ${t.sender} &lt;${t.email}&gt; · Inquiry ${current+1} of ${TICKETS.length}</div>
+      <h1 class="subject">${t.subject}</h1>
+      <div class="msg">${t.body}</div>
+    </section>
+    <section class="composer">
+      ${draftStage
+        ? `<h3>Your reply</h3>
+           <p class="hint" style="margin:-4px 0 10px">Write your own reply first.
+              The reply suggestion appears afterwards.</p>`
+        : `<h3>Reply to ${t.sender}</h3>`}
+      <textarea id="reply" class="ta" placeholder="Write your reply here">${draftStage ? "" : s.reply}</textarea>
+      <div id="cffzone"></div>
+      <div class="actions">
+        ${draftStage
+          ? `<button class="btn" id="savedraft">Save my reply</button>
+             <span class="hint">at least 200 characters</span>`
+          : `<button class="btn" id="send">Send reply</button>
+             <span class="hint" id="sendhint"></span>`}
+      </div>
+    </section>`;
+
+  const ta = document.getElementById("reply");
+  let editTmr = null;
+  ta.addEventListener("input", () => {
+    if (!draftStage) s.reply = ta.value;
+    updateSend();
+    clearTimeout(editTmr);
+    editTmr = setTimeout(() => rec("reply_edit", {chars:ta.value.length}), 1200);
+  });
+  ta.addEventListener("focus", () => rec("reply_focus"));
+
+  if (draftStage){
+    const sd = document.getElementById("savedraft");
+    const chk = () => sd.disabled = ta.value.trim().length < 200;
+    chk(); ta.addEventListener("input", chk);
+    sd.addEventListener("click", () => {
+      s.ownDraft = ta.value; s.reply = ta.value; s.ownDraftSaved = true;
+      rec("own_draft_saved", {chars:s.ownDraft.length});
+      renderWork();
+    });
+    return;
+  }
+
+  renderCFF();
+  document.getElementById("send").addEventListener("click", sendReply);
+  updateSend();
+}
+
+function renderCFF(){
+  const t = TICKETS[current], s = state[current], zone = document.getElementById("cffzone");
+  zone.innerHTML = "";
+  if (!showsAI()) return;
+
+  // On demand: the suggestion appears only when requested
+  if (condition === "ondemand" && !s.requested){
+    zone.innerHTML = `<div class="actions">
+        <button class="btn ghost" id="ask">Show reply suggestion</button>
+        <span class="hint">You can also answer the inquiry without a suggestion.</span>
+      </div>`;
+    document.getElementById("ask").addEventListener("click", () => {
+      s.requested = true;
+      rec("suggestion_requested", {replyChars:(s.reply||"").length});
+      renderCFF(); updateSend();
+    });
+    return;
+  }
+
+  // Delay: the suggestion appears only after the waiting time has elapsed
+  if (condition === "delay" && !s.delayDone){
+    let left = DELAY_SECONDS;
+    zone.innerHTML = `<div class="pending">
+        <span class="count" id="cnt">${left}</span>
+        The reply suggestion will appear in <span id="cnt2">${left}</span> seconds.
+        In the meantime you can read the inquiry and look things up in the handbook.
+      </div>`;
+    rec("delay_started", {seconds:DELAY_SECONDS});
+    timerHandle = setInterval(() => {
+      left -= 1;
+      const a = document.getElementById("cnt"), b = document.getElementById("cnt2");
+      if (a) a.textContent = left; if (b) b.textContent = left;
+      if (left <= 0){
+        clearInterval(timerHandle);
+        s.delayDone = true;
+        rec("delay_elapsed");
+        renderCFF(); updateSend();
+      }
+    }, 1000);
+    return;
+  }
+
+  const w = warningFor(current);
+  if (!s.suggestionShown){ s.suggestionShown = true; rec("suggestion_shown", {hasError:!!t.error, warned:!!w}); }
+
+  zone.innerHTML = `
+    ${w ? `<div class="warn ${w.cls}" role="note">
+             <p class="whead">${w.sym ? `<span class="sym" aria-hidden="true">${w.sym}</span>` : ``}<span>${WARN_HEAD}</span></p>
+             <p>${WARN_TEXT}</p>
+             <label><input type="checkbox" id="ack"><span>${ACK_LABEL}</span></label>
+           </div>` : ``}
+    <div class="suggestion">
+      <div class="shead"><span>AI reply suggestion</span></div>
+      <div class="sbody">${t.suggestion}</div>
+      <div class="sfoot"><button class="btn ghost" id="insert">Use this suggestion</button></div>
+    </div>
+    ${condition === "contradiction" ? `
+      <div class="probe">
+        <h4>Name a weakness</h4>
+        <p>Before you start writing: name at least one possible weakness of the suggestion,
+           for example an error, a contradiction with the handbook, or a missing piece of information.
+           If you cannot find one, say so explicitly.</p>
+        <textarea id="weak" class="ta small" placeholder="Possible weakness">${state[current].weakness}</textarea>
+        <label class="none"><input type="checkbox" id="noweak">
+          <span>I have checked the suggestion and found no weakness.</span></label>
+      </div>` : ``}`;
+
+  if (w){
+    s.warnShownAt = Date.now();
+    rec("warning_shown", {variant:w.id, cls:w.cls, pos:current+1, rotationStart});
+  }
+
+  document.getElementById("insert").addEventListener("click", () => {
+    const ta = document.getElementById("reply");
+    ta.value = t.suggestion; s.reply = ta.value; s.suggestionInserted = true;
+    rec("suggestion_inserted"); updateSend(); ta.focus();
+  });
+
+  const ack = document.getElementById("ack");
+  if (ack){
+    ack.checked = s.ackChecked;
+    ack.addEventListener("change", () => {
+      s.ackChecked = ack.checked;
+      if (ack.checked && s.ackLatencyMs === null && s.warnShownAt){
+        s.ackLatencyMs = Date.now() - s.warnShownAt;
+      }
+      rec("warning_ack", {checked:ack.checked, variant:w ? w.id : null, latencyMs:s.ackLatencyMs});
+      updateSend();
+    });
+  }
+  const weak = document.getElementById("weak"), nw = document.getElementById("noweak");
+  if (weak){
+    let wt = null;
+    weak.addEventListener("input", () => {
+      s.weakness = weak.value; updateSend();
+      clearTimeout(wt); wt = setTimeout(() => rec("weakness_edit", {chars:weak.value.length}), 1200);
+    });
+    nw.checked = s.noWeakness;
+    nw.addEventListener("change", () => {
+      s.noWeakness = nw.checked;
+      weak.disabled = nw.checked;
+      rec("no_weakness_declared", {checked:nw.checked});
+      updateSend();
+    });
+    weak.disabled = s.noWeakness;
+  }
+}
+
+function contraOpen(){
+  const s = state[current];
+  return condition !== "contradiction" || s.noWeakness || (s.weakness || "").trim().length >= 40;
+}
+
+function applyContraGate(){
+  const ta = document.getElementById("reply");
+  if (!ta) return;
+  const ins = document.getElementById("insert");
+  if (condition !== "contradiction"){ ta.disabled = false; if (ins) ins.disabled = false; return; }
+  const open = contraOpen(), wasLocked = ta.disabled;
+  ta.disabled = !open;
+  if (ins) ins.disabled = !open;
+  ta.placeholder = open
+    ? "Write your reply here"
+    : "First name a possible weakness of the suggestion below.";
+  if (open && wasLocked){
+    const s = state[current];
+    rec("compose_unlocked", {weaknessChars:(s.weakness||"").length, none:s.noWeakness});
+  }
+}
+
+function updateSend(){
+  applyContraGate();
+  const btn = document.getElementById("send"); if (!btn) return;
+  const s = state[current];
+  const w = warningFor(current);
+  const needsAck = !!w && showsAI() && (condition !== "delay" || s.delayDone);
+  const longEnough = (s.reply || "").trim().length >= 120;
+  const ackOK = !needsAck || s.ackChecked;
+  const contraOK = contraOpen();
+  btn.disabled = !(longEnough && ackOK && contraOK);
+  document.getElementById("sendhint").textContent =
+      !longEnough ? "The reply is still too short."
+    : !ackOK      ? "Please tick the box to continue."
+    : !contraOK   ? "The reply field unlocks once you have named a weakness or recorded that you found none."
+    : "";
+}
+
+function sendReply(){
+  const s = state[current];
+  s.done = true;
+  rec("reply_sent", Object.assign({
+    chars:s.reply.length, inserted:s.suggestionInserted,
+    durationMs: s.opened ? Date.now() - s.opened : null,
+    ackLatencyMs: s.ackLatencyMs,
+    weaknessChars: (s.weakness||"").length, noWeakness: s.noWeakness
+  }, scoreTicket(current)));
+  const next = state.findIndex(x => !x.done);
+  if (next >= 0) current = next;
+  renderQueue(); renderWork();
+}
+
+/* ---------- 9. Scoring: three separate measures ----------
+   Omission errors need their own detection rule. The suggestion contains
+   nothing that is wrong, so no prohibited phrase can be reproduced and a
+   keyword match on the reply would never register overreliance. For those
+   items, detection means that the reply supplies the required elements the
+   suggestion left out.
+--------------------------------------------------------------------------- */
+function omittedKeys(t){
+  return t.required.filter(r => !hit(t.suggestion, r.any)).map(r => r.key);
+}
+function scoreTicket(i){
+  const t = TICKETS[i], s = state[i], text = s.reply || "";
+  const req = t.required.map(r => ({key:r.key, label:r.label, met:hit(text, r.any)}));
+  const pro = t.prohibited.map(p => ({key:p.key, label:p.label, source:p.source, present:hit(text, p.any)}));
+  const aiErr  = pro.filter(p => p.present && p.source === "ai").length;
+  const ownErr = pro.filter(p => p.present && p.source === "own").length;
+  const completeness = req.length ? req.filter(r => r.met).length / req.length : 0;
+  const errorFree = (aiErr + ownErr) === 0;
+
+  // elements the suggestion itself leaves out, and whether the reply repairs them
+  const gaps = omittedKeys(t);
+  const gapsClosed = gaps.length ? gaps.every(k => req.find(r => r.key === k).met) : null;
+
+  let reliance = "na";
+  if (condition !== "noai" && s.suggestionShown){
+    if (t.error){
+      const detected = (t.error.type === "omission") ? gapsClosed === true : aiErr === 0;
+      reliance = detected ? "appropriate_rejection" : "overreliance";
+    } else {
+      reliance = errorFree ? "appropriate_acceptance" : "underreliance";
+    }
+  }
+  return {completeness:+completeness.toFixed(3), errorFree, aiErrors:aiErr, ownErrors:ownErr,
+          reliance, errorType: t.error ? t.error.type : "none",
+          gaps, gapsClosed, required:req, prohibited:pro};
+}
+
+/* ---------- 10. Researcher functions ---------- */
+function showScore(){
+  const done = state.filter(s => s.done).length;
+  const rows = TICKETS.map((t,i) => {
+    const r = scoreTicket(i);
+    const w = warningFor(i);
+    return `${String(i+1).padStart(2,"0")} ${t.id}  ${t.subject}
+   Injected error:   ${t.error ? t.error.type : "none"}${w ? "   ·   warning " + w.id : ""}
+   Required:         ${r.required.map(x => (x.met?"✓":"✗")+" "+x.key).join("  ")}
+   False statements: ${r.prohibited.map(x => (x.present?"✗":"✓")+" "+x.key+"["+x.source+"]").join("  ")}
+   completeness ${r.completeness}   error_free ${r.errorFree}   reliance ${r.reliance}`;
+  }).join("\n\n");
+  const agg = TICKETS.map((t,i)=>scoreTicket(i));
+  const head = `Condition: ${condition}   ·   answered: ${done}/${TICKETS.length}
+Warning shown on: ${TICKETS.map((t,i)=>warningFor(i)?`${i+1}(${warningFor(i).id})`:null).filter(Boolean).join(", ") || "no inquiry"}
+Means over answered inquiries: completeness ${
+  (agg.filter((_,i)=>state[i].done).reduce((a,b)=>a+b.completeness,0) / Math.max(1,done)).toFixed(3)
+}, error_free ${
+  (agg.filter((_,i)=>state[i].done).filter(x=>x.errorFree).length / Math.max(1,done)).toFixed(3)
+}`;
+  let box = document.getElementById("score");
+  if (!box){ box = document.createElement("pre"); box.id = "score"; document.getElementById("work").appendChild(box); }
+  box.textContent = `${head}\n\n${rows}`;
+  box.scrollIntoView({behavior:"smooth"});
+}
+
+function downloadLog(){
+  const payload = {
+    provider:PROVIDER, condition, DELAY_SECONDS, rotationStart,
+    warnings: TICKETS.map((t,i)=>{ const w = warningFor(i); return w ? {pos:i+1, variant:w.id} : null; }).filter(Boolean),
+    log,
+    responses: TICKETS.map((t,i) => ({
+      pos:i+1, ticket:t.id, topic:t.topic, errorType:t.error?t.error.type:"none",
+      reply:state[i].reply, ownDraft:state[i].ownDraft,
+      weakness:state[i].weakness, noWeakness:state[i].noWeakness,
+      inserted:state[i].suggestionInserted, ack:state[i].ackChecked,
+      ackLatencyMs:state[i].ackLatencyMs,
+      score:scoreTicket(i)
+    }))
+  };
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}));
+  a.download = `halvern_${condition}_${Date.now()}.json`;
+  a.click();
+}
+
+/* ---------- 11. Start ---------- */
+function resetAll(){
+  state = TICKETS.map(blank); log = []; current = 0;
+  rotationStart = (startParam >= 0 && startParam <= 3)
+    ? startParam : Math.floor(Math.random() * VARIANTS.length);
+  clearInterval(timerHandle);
+  rec("condition_set", {DELAY_SECONDS, rotationStart});
+  renderQueue(); renderWork();
+}
+function boot(){
+  if (!DEV){ document.getElementById("devbar").remove(); document.getElementById("app").classList.add("nodev"); }
+  const cs = document.getElementById("condsel");
+  if (cs){   // absent when the researcher bar is hidden via ?dev=0
+    cs.value = condition;
+    cs.addEventListener("change", e => { condition = e.target.value; resetAll(); });
+    document.getElementById("btnscore").addEventListener("click", showScore);
+    document.getElementById("btnlog").addEventListener("click", downloadLog);
+    document.getElementById("btnreset").addEventListener("click", () => location.reload());
+  }
+  rec("session_start", {DELAY_SECONDS, rotationStart});
+  renderKB(); renderQueue(); renderWork();
+}
+boot();
+</script>
+</body>
+</html>
