@@ -25,6 +25,8 @@ textarea,input{font-family:inherit;font-size:inherit;color:inherit}
 #devbar strong{font-weight:600;color:#fff}
 #devbar select,#devbar button{background:#26362e;color:#eaf2ee;border:1px solid #3c5045;border-radius:4px;padding:4px 8px;font-size:12.5px}
 #devbar .spacer{flex:1}
+#variantbadge{font-weight:600;color:#9fd7bb}
+#variantbadge:empty{display:none}
 
 #app{display:grid;grid-template-columns:262px minmax(0,1fr) 330px;height:calc(100% - 37px)}
 #app.nodev{height:100%}
@@ -72,7 +74,7 @@ textarea.small{min-height:96px}
 .warn .whead{font-weight:600;display:flex;gap:8px;align-items:center}
 .warn label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
 .warn input[type=checkbox]{margin-top:3px}
-.warn .sym{font-size:15px;line-height:1}
+.warn .sym{font-size:24px;line-height:1;margin-right:2px}
 
 /* B  base: plain box, no symbol, neutral background, no animation */
 .w-base{}
@@ -81,16 +83,21 @@ textarea.small{min-height:96px}
 /* W2 red background */
 .w-red{background:#fbeceb;border-color:#d99b98;color:#7d1d1d}
 /* W3 jiggle animation, runs once on render */
-.w-jiggle{animation:jiggle 400ms ease-in-out 1}
+.w-jiggle{animation:jiggle var(--anim-jiggle,900ms) ease-in-out 1}
 @keyframes jiggle{
-  0%{transform:translateX(0)} 20%{transform:translateX(-6px)}
-  40%{transform:translateX(6px)} 60%{transform:translateX(-4px)}
-  80%{transform:translateX(4px)} 100%{transform:translateX(0)}
+  0%{transform:translateX(0)}   10%{transform:translateX(-14px)}
+  22%{transform:translateX(14px)} 34%{transform:translateX(-12px)}
+  46%{transform:translateX(12px)} 58%{transform:translateX(-8px)}
+  70%{transform:translateX(8px)}  82%{transform:translateX(-4px)}
+  92%{transform:translateX(4px)} 100%{transform:translateX(0)}
 }
 /* W4 zoom animation, runs once on render */
-.w-zoom{animation:zoomin 400ms ease-out 1}
+.w-zoom{animation:zoomin var(--anim-zoom,700ms) cubic-bezier(.34,1.56,.64,1) 1}
 @keyframes zoomin{
-  0%{transform:scale(.88)} 60%{transform:scale(1.04)} 100%{transform:scale(1)}
+  0%{transform:scale(.72);opacity:.4}
+  55%{transform:scale(1.08);opacity:1}
+  78%{transform:scale(.98)}
+  100%{transform:scale(1)}
 }
 @media (prefers-reduced-motion:reduce){
   .w-jiggle,.w-zoom{animation:none}
@@ -140,7 +147,9 @@ textarea.small{min-height:96px}
       <option value="contradiction">7 · Contradiction</option>
     </select>
   </label>
+  <span id="variantbadge"></span>
   <span class="spacer"></span>
+  <button id="btnreplay">Replay warning</button>
   <button id="btnscore">Scoring</button>
   <button id="btnlog">Log as JSON</button>
   <button id="btnreset">Reset</button>
@@ -1022,6 +1031,8 @@ function renderCFF(){
     s.warnShownAt = Date.now();
     rec("warning_shown", {variant:w.id, cls:w.cls, pos:current+1, rotationStart});
   }
+  const badge = document.getElementById("variantbadge");
+  if (badge) badge.textContent = w ? `warning ${w.id}` : "";
 
   document.getElementById("insert").addEventListener("click", () => {
     const ta = document.getElementById("reply");
@@ -1213,6 +1224,13 @@ function boot(){
     document.getElementById("btnscore").addEventListener("click", showScore);
     document.getElementById("btnlog").addEventListener("click", downloadLog);
     document.getElementById("btnreset").addEventListener("click", () => location.reload());
+    // demo aid: play the animation of the current warning again, without
+    // touching the data. The acknowledgment latency is not reset by this.
+    document.getElementById("btnreplay").addEventListener("click", () => {
+      const keep = state[current].warnShownAt;
+      renderCFF(); updateSend();
+      state[current].warnShownAt = keep;
+    });
   }
   rec("session_start", {DELAY_SECONDS, rotationStart});
   renderKB(); renderQueue(); renderWork();
