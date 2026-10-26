@@ -72,7 +72,7 @@ textarea.small{min-height:96px}
 .warn .whead{font-weight:600;display:flex;gap:8px;align-items:center}
 .warn label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
 .warn input[type=checkbox]{margin-top:3px}
-.warn .sym{font-size:24px;line-height:1;margin-right:2px}
+.warn .sym{font-size:var(--warn-sym,36px);line-height:1;margin-right:6px}
 
 /* B  base: plain box, no symbol, neutral background, no animation */
 .w-base{}
@@ -81,20 +81,28 @@ textarea.small{min-height:96px}
 /* W2 red background */
 .w-red{background:#fbeceb;border-color:#d99b98;color:#7d1d1d}
 /* W3 jiggle animation, runs once on render */
-.w-jiggle{animation:jiggle var(--anim-jiggle,900ms) ease-in-out 1}
+.w-jiggle{animation:jiggle var(--anim-jiggle,2200ms) ease-in-out 1}
 @keyframes jiggle{
-  0%{transform:translateX(0)}   10%{transform:translateX(-14px)}
-  22%{transform:translateX(14px)} 34%{transform:translateX(-12px)}
-  46%{transform:translateX(12px)} 58%{transform:translateX(-8px)}
-  70%{transform:translateX(8px)}  82%{transform:translateX(-4px)}
-  92%{transform:translateX(4px)} 100%{transform:translateX(0)}
+  0%{transform:translateX(0)}
+  6%{transform:translateX(-26px)}  12%{transform:translateX(26px)}
+  18%{transform:translateX(-24px)} 24%{transform:translateX(24px)}
+  30%{transform:translateX(-22px)} 36%{transform:translateX(22px)}
+  42%{transform:translateX(-20px)} 48%{transform:translateX(20px)}
+  54%{transform:translateX(-16px)} 60%{transform:translateX(16px)}
+  66%{transform:translateX(-12px)} 72%{transform:translateX(12px)}
+  78%{transform:translateX(-8px)}  84%{transform:translateX(8px)}
+  90%{transform:translateX(-4px)}  95%{transform:translateX(4px)}
+  100%{transform:translateX(0)}
 }
 /* W4 zoom animation, runs once on render */
-.w-zoom{animation:zoomin var(--anim-zoom,700ms) cubic-bezier(.34,1.56,.64,1) 1}
+.w-zoom{animation:zoomin var(--anim-zoom,1800ms) ease-in-out 1}
 @keyframes zoomin{
-  0%{transform:scale(.72);opacity:.4}
-  55%{transform:scale(1.08);opacity:1}
-  78%{transform:scale(.98)}
+  0%{transform:scale(.45);opacity:.25}
+  25%{transform:scale(1.18);opacity:1}
+  45%{transform:scale(.90)}
+  62%{transform:scale(1.10)}
+  76%{transform:scale(.96)}
+  88%{transform:scale(1.04)}
   100%{transform:scale(1)}
 }
 @media (prefers-reduced-motion:reduce){
@@ -812,6 +820,16 @@ let current = 0;
 /* Rotation start for the polymorphic condition: random per session unless fixed
    via ?start=0..3. Keeps no form repeating on consecutive inquiries and gives
    each form the same number of appearances. */
+/* Tuning for the demo. Defaults are set in the CSS; these parameters override
+   them live, for example ?jiggle=3000&zoom=2400&sym=48
+   For the study, set them back to the values in the procedures document. */
+["jiggle","zoom"].forEach(k => {
+  const v = parseInt(params.get(k), 10);
+  if (v > 0) document.documentElement.style.setProperty(`--anim-${k}`, v + "ms");
+});
+const symParam = parseInt(params.get("sym"), 10);
+if (symParam > 0) document.documentElement.style.setProperty("--warn-sym", symParam + "px");
+
 const startParam = parseInt(params.get("start"), 10);
 let rotationStart = (startParam >= 0 && startParam <= 3)
   ? startParam : Math.floor(Math.random() * VARIANTS.length);
@@ -1160,16 +1178,14 @@ function showScore(){
   const done = state.filter(s => s.done).length;
   const rows = TICKETS.map((t,i) => {
     const r = scoreTicket(i);
-    const w = warningFor(i);
     return `${String(i+1).padStart(2,"0")} ${t.id}  ${t.subject}
-   Injected error:   ${t.error ? t.error.type : "none"}${w ? "   ·   warning " + w.id : ""}
+   Injected error:   ${t.error ? t.error.type : "none"}
    Required:         ${r.required.map(x => (x.met?"✓":"✗")+" "+x.key).join("  ")}
    False statements: ${r.prohibited.map(x => (x.present?"✗":"✓")+" "+x.key+"["+x.source+"]").join("  ")}
    completeness ${r.completeness}   error_free ${r.errorFree}   reliance ${r.reliance}`;
   }).join("\n\n");
   const agg = TICKETS.map((t,i)=>scoreTicket(i));
   const head = `Condition: ${condition}   ·   answered: ${done}/${TICKETS.length}
-Warning shown on: ${TICKETS.map((t,i)=>warningFor(i)?`${i+1}(${warningFor(i).id})`:null).filter(Boolean).join(", ") || "no inquiry"}
 Means over answered inquiries: completeness ${
   (agg.filter((_,i)=>state[i].done).reduce((a,b)=>a+b.completeness,0) / Math.max(1,done)).toFixed(3)
 }, error_free ${
